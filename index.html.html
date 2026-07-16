@@ -1,0 +1,1931 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simulador de Horario – Masiel | Kinesiología</title>
+<style>
+  /* ============================================================
+     1. VARIABLES Y RESET
+     ============================================================ */
+  :root{
+    --bg: #fdf1f6;
+    --card-bg: #fffbfd;
+    --border: #f3d9e6;
+    --text-main: #2b2229;
+    --text-muted: #8a6b7a;
+    --verde: #22a45d;
+    --verde-bg: #e6f7ee;
+    --verde-borde: #189352;
+    --rojo: #e0453e;
+    --rojo-bg: #fdeceb;
+    --rojo-borde: #c53831;
+    --azul: #d6488f;
+    --azul-hover: #b8377a;
+    --azul-bg: #fce8f1;
+    --shadow-sm: 0 1px 2px rgba(180,40,110,.08), 0 1px 1px rgba(180,40,110,.05);
+    --shadow-md: 0 6px 16px rgba(180,40,110,.12), 0 2px 4px rgba(180,40,110,.08);
+    --radius: 12px;
+    --radius-sm: 8px;
+  }
+
+  *{ box-sizing: border-box; }
+
+  html, body{
+    margin:0; padding:0;
+    background: var(--bg);
+    color: var(--text-main);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  button{
+    font-family: inherit;
+    cursor: pointer;
+  }
+  button:focus-visible,
+  [tabindex]:focus-visible,
+  select:focus-visible,
+  a:focus-visible{
+    outline: 3px solid #e88ab8;
+    outline-offset: 2px;
+  }
+
+  /* ============================================================
+     2. LAYOUT GENERAL
+     ============================================================ */
+  header.app-header{
+    background: var(--card-bg);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 24px;
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .app-header .titulo-wrap{
+    display:flex;
+    align-items:center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  .app-header h1{
+    font-size: 20px;
+    margin: 0;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+  .app-header h1 .subt{
+    font-weight: 400;
+    color: var(--text-muted);
+  }
+
+  .header-acciones{
+    display:flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items:center;
+  }
+
+  .leyenda{
+    display:flex;
+    gap: 16px;
+    align-items:center;
+    font-size: 13px;
+    color: var(--text-muted);
+    flex-wrap: wrap;
+  }
+  .leyenda .item{
+    display:flex;
+    align-items:center;
+    gap: 6px;
+  }
+  .punto{
+    width: 11px; height: 11px;
+    border-radius: 50%;
+    display:inline-block;
+    flex-shrink:0;
+  }
+  .punto.verde{ background: var(--verde); }
+  .punto.rojo{ background: var(--rojo); }
+
+  main.contenedor{
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 20px 24px 60px;
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 20px;
+    align-items: start;
+  }
+
+  @media (max-width: 980px){
+    main.contenedor{
+      grid-template-columns: 1fr;
+    }
+    .panel-lateral{
+      order: -1;
+    }
+  }
+
+  /* ============================================================
+     3. BOTONES
+     ============================================================ */
+  .btn{
+    border: none;
+    border-radius: var(--radius-sm);
+    padding: 10px 16px;
+    font-size: 14px;
+    font-weight: 600;
+    transition: background .15s ease, transform .1s ease, box-shadow .15s ease;
+    white-space: nowrap;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    touch-action: manipulation;
+  }
+  .btn:active{ transform: translateY(1px); }
+
+  .btn-azul{
+    background: var(--azul);
+    color: #fff;
+  }
+  .btn-azul:hover{ background: var(--azul-hover); }
+
+  .btn-secundario{
+    background: #fff;
+    color: var(--text-main);
+    border: 1px solid var(--border);
+  }
+  .btn-secundario:hover{ background: #f6f7f9; }
+
+  .btn-peligro{
+    background: var(--rojo);
+    color: #fff;
+  }
+  .btn-peligro:hover{ background: var(--rojo-borde); }
+
+  .btn-texto{
+    background: transparent;
+    color: var(--text-muted);
+    border: 1px solid transparent;
+    padding: 6px 10px;
+    font-size: 13px;
+    min-height: 36px;
+  }
+  .btn-texto:hover{ color: var(--text-main); background: #f0f1f3; border-radius: 6px; }
+
+  .btn-mini{
+    padding: 6px 10px;
+    font-size: 12.5px;
+    border-radius: 6px;
+    min-height: 36px;
+  }
+
+  /* ============================================================
+     4. TARJETA DE HORARIO
+     ============================================================ */
+  .tarjeta-horario{
+    background: var(--card-bg);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-md);
+    border: 1px solid var(--border);
+    padding: 16px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x proximity;
+  }
+
+  .horario-grid-wrap{
+    min-width: 640px;
+  }
+
+  .horario-grid{
+    display: grid;
+    /* columnas se definen por JS via style inline (grid-template-columns) */
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+  }
+
+  .celda-cabecera{
+    background: #fdf4f8;
+    padding: 10px 6px;
+    text-align: center;
+    font-weight: 700;
+    font-size: 13px;
+    color: var(--text-main);
+    border-bottom: 1px solid var(--border);
+    border-left: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    scroll-snap-align: start;
+  }
+  .celda-cabecera.hora-col{
+    border-left: none;
+    left: 0;
+    z-index: 6;
+    border-top-left-radius: var(--radius-sm);
+  }
+
+  .col-horas{
+    position: sticky;
+    left: 0;
+    z-index: 4;
+    background: var(--card-bg);
+    border-left: none;
+    border-bottom-left-radius: var(--radius-sm);
+  }
+  .marca-hora{
+    position: absolute;
+    left: 0; right: 0;
+    font-size: 11px;
+    color: var(--text-muted);
+    text-align: right;
+    padding-right: 6px;
+    transform: translateY(-50%);
+  }
+
+  .col-dia{
+    position: relative;
+    border-left: 1px solid var(--border);
+    scroll-snap-align: start;
+    background-image: repeating-linear-gradient(
+      to bottom,
+      #faeef3 0, #faeef3 1px, transparent 1px, transparent 100%
+    );
+  }
+  .linea-hora{
+    position: absolute;
+    left:0; right:0;
+    border-top: 1px dashed #f1dce8;
+  }
+
+  .bloque-clase{
+    position: absolute;
+    left: 3px; right: 3px;
+    border-radius: 7px;
+    padding: 4px 6px;
+    font-size: 11.5px;
+    line-height: 1.25;
+    overflow: hidden;
+    cursor: pointer;
+    border: 1px solid var(--verde-borde);
+    background: var(--verde-bg);
+    color: #0d3d24;
+    transition: filter .15s ease, transform .12s ease, box-shadow .15s ease;
+    box-shadow: var(--shadow-sm);
+  }
+  .bloque-clase:hover{
+    filter: brightness(0.97);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+    z-index: 5;
+  }
+  .bloque-clase.conflicto{
+    border-color: var(--rojo-borde);
+    background: var(--rojo-bg);
+    color: #5c130f;
+  }
+  .bloque-clase.flash{
+    animation: flashRojo 900ms ease;
+  }
+  @keyframes flashRojo{
+    0%{ box-shadow: 0 0 0 4px rgba(224,69,62,.35); }
+    100%{ box-shadow: var(--shadow-sm); }
+  }
+  .bloque-clase.entrando{
+    animation: entrarBloque 220ms ease;
+  }
+  @keyframes entrarBloque{
+    from{ opacity: 0; transform: scale(.93); }
+    to{ opacity: 1; transform: scale(1); }
+  }
+
+  .bloque-hora{ font-weight: 700; }
+  .bloque-codigo{ font-weight: 800; letter-spacing: .01em; }
+  .bloque-nombre{
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .bloque-sub{
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    opacity: .9;
+  }
+
+  .bloque-cerrar{
+    position: absolute;
+    top: 2px; right: 2px;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: rgba(0,0,0,.12);
+    color: inherit;
+    border: none;
+    font-size: 11px;
+    line-height: 16px;
+    text-align: center;
+    padding: 0;
+    display:none;
+  }
+  .bloque-clase:hover .bloque-cerrar{ display:block; }
+  .bloque-cerrar:hover{ background: rgba(0,0,0,.25); }
+
+  /* ============================================================
+     5. PANEL LATERAL
+     ============================================================ */
+  .panel-lateral{
+    display:flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .caja{
+    background: var(--card-bg);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-md);
+    border: 1px solid var(--border);
+    overflow: hidden;
+  }
+
+  .caja-cabecera{
+    width: 100%;
+    display:flex;
+    justify-content: space-between;
+    align-items:center;
+    padding: 14px 16px;
+    background: #fdf4f8;
+    border: none;
+    border-bottom: 1px solid var(--border);
+    font-weight: 700;
+    font-size: 15px;
+    color: var(--text-main);
+  }
+  .caja-cabecera .flecha{
+    transition: transform .18s ease;
+    color: var(--text-muted);
+  }
+  .caja-cabecera[aria-expanded="true"] .flecha{ transform: rotate(180deg); }
+
+  .caja-cuerpo{
+    padding: 14px 16px;
+  }
+  .caja-cuerpo.oculto{ display:none; }
+
+  select.select-ramo{
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    font-size: 16px;
+    min-height: 44px;
+    background: #fff;
+    color: var(--text-main);
+  }
+
+  .lista-secciones{
+    margin-top: 14px;
+    display:flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .tarjeta-seccion{
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    font-size: 13px;
+    background: #fef8fb;
+  }
+  .tarjeta-seccion .fila-top{
+    display:flex;
+    justify-content: space-between;
+    align-items:flex-start;
+    gap: 8px;
+    margin-bottom: 4px;
+  }
+  .tarjeta-seccion .sec-nombre{
+    font-weight: 700;
+  }
+  .tarjeta-seccion .sec-prof{
+    color: var(--text-muted);
+    margin-bottom: 4px;
+  }
+  .tarjeta-seccion .sec-bloques{
+    color: var(--text-main);
+    margin-bottom: 8px;
+  }
+  .tarjeta-seccion .sec-bloques div{
+    display:flex;
+    justify-content: space-between;
+    gap:6px;
+    color: var(--text-muted);
+  }
+  .tarjeta-seccion .sec-bloques b{ color: var(--text-main); font-weight: 600;}
+
+  .badge-agregada{
+    font-size: 11px;
+    font-weight: 700;
+    background: var(--verde-bg);
+    color: var(--verde-borde);
+    border: 1px solid var(--verde-borde);
+    padding: 2px 7px;
+    border-radius: 20px;
+    white-space:nowrap;
+  }
+
+  /* Resumen */
+  .resumen-item{
+    display:flex;
+    justify-content: space-between;
+    align-items:flex-start;
+    gap: 8px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+  }
+  .resumen-item:last-child{ border-bottom: none; }
+  .resumen-item .info{ min-width:0; }
+  .resumen-item .info .nom{ font-weight: 700; }
+  .resumen-item .info .met{ color: var(--text-muted); font-size:12px; margin-top:2px; }
+  .estado-chip{
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 20px;
+    white-space:nowrap;
+  }
+  .estado-chip.ok{ background: var(--verde-bg); color: var(--verde-borde); }
+  .estado-chip.choque{ background: var(--rojo-bg); color: var(--rojo-borde); }
+
+  .resumen-vacio{
+    color: var(--text-muted);
+    font-size: 13px;
+    text-align:center;
+    padding: 10px 0;
+  }
+
+  .stats-grid{
+    display:grid;
+    grid-template-columns: repeat(3,1fr);
+    gap: 8px;
+    margin-top: 12px;
+  }
+  .stat{
+    text-align:center;
+    background: #fdf4f8;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 8px 4px;
+  }
+  .stat .num{ font-size: 18px; font-weight: 800; }
+  .stat .lab{ font-size: 10.5px; color: var(--text-muted); }
+
+  /* ============================================================
+     6. MODALES
+     ============================================================ */
+  .overlay{
+    position: fixed; inset:0;
+    background: rgba(20,22,26,.5);
+    display:flex; align-items:center; justify-content:center;
+    padding: 16px;
+    z-index: 100;
+    opacity: 0;
+    animation: fadeIn .15s ease forwards;
+  }
+  @keyframes fadeIn{ to{ opacity:1; } }
+
+  .modal{
+    background: #fff;
+    border-radius: var(--radius);
+    max-width: 440px;
+    width: 100%;
+    box-shadow: var(--shadow-md);
+    padding: 22px;
+    transform: translateY(8px);
+    animation: subirModal .18s ease forwards;
+  }
+  @keyframes subirModal{ to{ transform: translateY(0); } }
+
+  .modal h2{
+    margin: 0 0 8px;
+    font-size: 17px;
+    display:flex; align-items:center; gap:8px;
+  }
+  .modal h2 .icono-alerta{
+    width: 24px; height:24px;
+    border-radius:50%;
+    background: var(--rojo);
+    color:#fff;
+    font-size:14px;
+    display:flex; align-items:center; justify-content:center;
+    flex-shrink:0;
+  }
+  .modal p{
+    font-size: 14px;
+    color: var(--text-main);
+    line-height: 1.5;
+    margin: 6px 0;
+  }
+  .modal .detalle-choque{
+    background: var(--rojo-bg);
+    border: 1px solid #f4c6c3;
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    font-size: 13px;
+    margin: 10px 0 14px;
+  }
+  .modal .detalle-choque div{ margin: 2px 0; }
+  .modal .acciones{
+    display:flex;
+    justify-content:flex-end;
+    gap: 10px;
+    margin-top: 16px;
+    flex-wrap: wrap;
+  }
+
+  /* Popover de bloque */
+  .popover-bloque .modal{ max-width: 360px; }
+  .popover-bloque .info-fila{
+    display:flex; justify-content: space-between; gap: 10px;
+    font-size: 13px; padding: 5px 0;
+    border-bottom: 1px dashed var(--border);
+  }
+  .popover-bloque .info-fila:last-of-type{ border-bottom:none; }
+  .popover-bloque .info-fila .k{ color: var(--text-muted); }
+  .popover-bloque .info-fila .v{ font-weight:600; text-align:right; }
+
+  /* Toast */
+  #toast-wrap{
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 200;
+    display:flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items:center;
+  }
+  .toast{
+    background: #4a2038;
+    color: #fff;
+    padding: 10px 18px;
+    border-radius: 30px;
+    font-size: 13.5px;
+    box-shadow: var(--shadow-md);
+    display:flex;
+    align-items:center;
+    gap: 8px;
+    animation: toastIn .18s ease, toastOut .25s ease 2.6s forwards;
+  }
+  .toast.error{ background: #7a2434; }
+  @keyframes toastIn{ from{ opacity:0; transform: translateY(8px);} to{opacity:1; transform:translateY(0);} }
+  @keyframes toastOut{ to{ opacity:0; transform: translateY(-6px); } }
+
+  /* Utilidades */
+  .sr-only{
+    position:absolute; width:1px; height:1px; padding:0; margin:-1px;
+    overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0;
+  }
+
+  footer.pie{
+    text-align:center;
+    font-size: 12px;
+    color: var(--text-muted);
+    padding: 10px 0 30px;
+  }
+
+  .pista-scroll{
+    display: none;
+    font-size: 12px;
+    color: var(--text-muted);
+    text-align: right;
+    margin: 0 2px 8px;
+  }
+  .pista-scroll.visible{ display: block; }
+
+  @media (max-width: 560px){
+    .app-header{ padding: 12px 14px; }
+    main.contenedor{ padding: 14px 14px 40px; }
+    .tarjeta-horario{ padding: 10px; }
+    .header-acciones{ width:100%; }
+    .header-acciones .btn{ flex:1; }
+    .app-header h1{ font-size: 18px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="app-header">
+  <div class="titulo-wrap">
+    <h1>Simulador de Horario <span class="subt">– Masiel | Kinesiología</span></h1>
+    <div class="header-acciones">
+      <button class="btn btn-secundario" id="btn-descargar">⬇ Descargar horario (PNG)</button>
+      <button class="btn btn-azul" id="btn-limpiar">Limpiar horario</button>
+      <button class="btn btn-secundario" id="btn-restablecer">Restablecer horario guardado</button>
+    </div>
+  </div>
+  <div class="titulo-wrap" style="margin-top:10px;">
+    <div class="leyenda" aria-label="Leyenda de colores">
+      <span class="item"><span class="punto verde"></span> Secciones sin choque</span>
+      <span class="item"><span class="punto rojo"></span> Secciones con choque</span>
+    </div>
+  </div>
+</header>
+
+<main class="contenedor">
+
+  <!-- ======================= HORARIO ======================= -->
+  <section class="tarjeta-horario" aria-label="Horario semanal">
+    <div class="pista-scroll" aria-hidden="true">Desliza para ver todos los días →</div>
+    <div class="horario-grid-wrap">
+      <div class="horario-grid" id="horario-grid"></div>
+    </div>
+  </section>
+
+  <!-- ======================= PANEL LATERAL ======================= -->
+  <aside class="panel-lateral">
+
+    <div class="caja">
+      <button class="caja-cabecera" id="btn-toggle-agregar" aria-expanded="true" aria-controls="cuerpo-agregar">
+        Agregar ramo
+        <span class="flecha" aria-hidden="true">▾</span>
+      </button>
+      <div class="caja-cuerpo" id="cuerpo-agregar">
+        <label class="sr-only" for="select-ramo">Selecciona un ramo</label>
+        <select id="select-ramo" class="select-ramo">
+          <option value="">Selecciona un ramo…</option>
+        </select>
+        <div class="lista-secciones" id="lista-secciones"></div>
+      </div>
+    </div>
+
+    <div class="caja">
+      <button class="caja-cabecera" id="btn-toggle-resumen" aria-expanded="true" aria-controls="cuerpo-resumen">
+        Ramos seleccionados
+        <span class="flecha" aria-hidden="true">▾</span>
+      </button>
+      <div class="caja-cuerpo" id="cuerpo-resumen">
+        <div id="resumen-lista"></div>
+        <div class="stats-grid">
+          <div class="stat"><div class="num" id="stat-ramos">0</div><div class="lab">Ramos</div></div>
+          <div class="stat"><div class="num" id="stat-horas">0</div><div class="lab">Hrs/semana</div></div>
+          <div class="stat"><div class="num" id="stat-choques">0</div><div class="lab">Conflictos</div></div>
+        </div>
+      </div>
+    </div>
+
+  </aside>
+
+</main>
+
+<footer class="pie">Guardado automáticamente en este navegador · Datos de secciones: oferta académica Kinesiología 2026-2</footer>
+
+<div id="modal-root" aria-live="polite"></div>
+<div id="toast-wrap" aria-live="polite"></div>
+
+<script>
+/* ================================================================
+   1. DATOS: RAMOS Y SECCIONES
+   Extraídos de la tabla de oferta de secciones (KIN02413, KIN02421,
+   KIN02422, KIN0915, KIN0917, KIN0918, PRI0001) y del calendario
+   semanal entregado (para los ramos restantes que no aparecían en
+   la tabla de secciones: Campo Clínico y Simulación, Kinesiología
+   Deportiva, Kinesiología Intensiva, Deporte Adaptado y Reunión de
+   Equipo, cada uno con una única sección disponible).
+   ================================================================ */
+
+const NO_INFORMADO = "Profesor no informado";
+const CODIGO_NI = "Código no informado";
+
+const ramos = [
+  {
+    id: "kin02413",
+    nombre: "Salud Mental",
+    codigo: "KIN02413",
+    secciones: [
+      {
+        id: "kin02413-1",
+        numero: "Sección 1",
+        bloques: [
+          { dia: "Viernes", inicio: "14:30", fin: "15:50", tipo: "Cátedra", profesor: "Teresa Monreal / Francisca Belén Vargas" }
+        ]
+      }
+    ]
+  },
+  {
+    id: "kin02421",
+    nombre: "Integración en Acciones en Kinesiología",
+    codigo: "KIN02421",
+    secciones: [
+      {
+        id: "kin02421-1",
+        numero: "Sección 1",
+        bloques: [
+          { dia: "Jueves",  inicio: "08:30", fin: "09:50", tipo: "Cátedra",            profesor: "Jorge Javier Mauro" },
+          { dia: "Martes",  inicio: "08:30", fin: "09:50", tipo: "Simulación",         profesor: NO_INFORMADO },
+          { dia: "Jueves",  inicio: "10:00", fin: "11:20", tipo: "Laboratorio 01",     profesor: "Jorge Javier Mauro" },
+          { dia: "Martes",  inicio: "10:00", fin: "11:20", tipo: "Actividad Clínica",  profesor: NO_INFORMADO }
+        ]
+      },
+      {
+        id: "kin02421-2",
+        numero: "Sección 2",
+        bloques: [
+          { dia: "Jueves",    inicio: "08:30", fin: "09:50", tipo: "Cátedra",           profesor: "Jorge Javier Mauro" },
+          { dia: "Martes",    inicio: "08:30", fin: "09:50", tipo: "Simulación",        profesor: NO_INFORMADO },
+          { dia: "Martes",    inicio: "10:00", fin: "11:20", tipo: "Actividad Clínica", profesor: NO_INFORMADO },
+          { dia: "Miércoles", inicio: "08:30", fin: "09:50", tipo: "Laboratorio 02",    profesor: "Alan Frederik Martínez" }
+        ]
+      },
+      {
+        id: "kin02421-3",
+        numero: "Sección 3",
+        bloques: [
+          { dia: "Miércoles", inicio: "10:00", fin: "11:20", tipo: "Laboratorio 03",    profesor: "Alan Frederik Martínez" },
+          { dia: "Martes",    inicio: "08:30", fin: "09:50", tipo: "Simulación",        profesor: NO_INFORMADO },
+          { dia: "Martes",    inicio: "10:00", fin: "11:20", tipo: "Actividad Clínica", profesor: NO_INFORMADO },
+          { dia: "Jueves",    inicio: "08:30", fin: "09:50", tipo: "Cátedra",           profesor: "Jorge Javier Mauro" }
+        ]
+      },
+      {
+        id: "kin02421-4",
+        numero: "Sección 4",
+        bloques: [
+          { dia: "Jueves",  inicio: "08:30", fin: "09:50", tipo: "Cátedra",            profesor: "Jorge Javier Mauro" },
+          { dia: "Martes",  inicio: "10:00", fin: "11:20", tipo: "Actividad Clínica",  profesor: NO_INFORMADO },
+          { dia: "Lunes",   inicio: "08:30", fin: "09:50", tipo: "Laboratorio 04",     profesor: "Felipe Israel Morales" },
+          { dia: "Martes",  inicio: "08:30", fin: "09:50", tipo: "Simulación",         profesor: NO_INFORMADO }
+        ]
+      },
+      {
+        id: "kin02421-5",
+        numero: "Sección 5",
+        bloques: [
+          { dia: "Jueves",  inicio: "08:30", fin: "09:50", tipo: "Cátedra",            profesor: "Jorge Javier Mauro" },
+          { dia: "Martes",  inicio: "10:00", fin: "11:20", tipo: "Actividad Clínica",  profesor: NO_INFORMADO },
+          { dia: "Lunes",   inicio: "10:00", fin: "11:20", tipo: "Laboratorio 05",     profesor: "Felipe Israel Morales" },
+          { dia: "Martes",  inicio: "08:30", fin: "09:50", tipo: "Simulación",         profesor: NO_INFORMADO }
+        ]
+      }
+    ]
+  },
+  {
+    id: "kin02422",
+    nombre: "Innovación y Emprendimiento en Salud",
+    codigo: "KIN02422",
+    secciones: [
+      {
+        id: "kin02422-1",
+        numero: "Sección 1",
+        bloques: [
+          { dia: "Jueves",  inicio: "16:00", fin: "17:20", tipo: "Cátedra",        profesor: NO_INFORMADO },
+          { dia: "Viernes", inicio: "08:30", fin: "11:20", tipo: "Laboratorio 01", profesor: NO_INFORMADO }
+        ]
+      },
+      {
+        id: "kin02422-2",
+        numero: "Sección 2",
+        bloques: [
+          { dia: "Jueves", inicio: "16:00", fin: "17:20", tipo: "Cátedra",        profesor: NO_INFORMADO },
+          { dia: "Lunes",  inicio: "14:30", fin: "17:20", tipo: "Laboratorio 02", profesor: "Fernando Ignacio Muñoz" }
+        ]
+      },
+      {
+        id: "kin02422-3",
+        numero: "Sección 3",
+        bloques: [
+          { dia: "Jueves",  inicio: "16:00", fin: "17:20", tipo: "Cátedra",        profesor: NO_INFORMADO },
+          { dia: "Viernes", inicio: "08:30", fin: "11:20", tipo: "Laboratorio 03", profesor: "Duilio De Lapeyra" }
+        ]
+      },
+      {
+        id: "kin02422-4",
+        numero: "Sección 4",
+        bloques: [
+          { dia: "Jueves",  inicio: "16:00", fin: "17:20", tipo: "Cátedra",        profesor: NO_INFORMADO },
+          { dia: "Viernes", inicio: "11:30", fin: "14:20", tipo: "Laboratorio 04", profesor: "Duilio De Lapeyra" }
+        ]
+      },
+      {
+        id: "kin02422-5",
+        numero: "Sección 5",
+        bloques: [
+          { dia: "Viernes", inicio: "16:00", fin: "18:45", tipo: "Laboratorio 05", profesor: "Fernando Ignacio Muñoz" },
+          { dia: "Jueves",  inicio: "16:00", fin: "17:20", tipo: "Cátedra",        profesor: NO_INFORMADO }
+        ]
+      },
+      {
+        id: "kin02422-6",
+        numero: "Sección 6",
+        bloques: [
+          { dia: "Jueves", inicio: "16:00", fin: "17:20", tipo: "Cátedra", profesor: NO_INFORMADO }
+          /* Laboratorio 06 de esta sección no tenía día/horario informado en la fuente y no se incluye. */
+        ]
+      }
+    ]
+  },
+  {
+    id: "kin0915",
+    nombre: "Ergonomía",
+    codigo: "KIN0915",
+    secciones: [
+      {
+        id: "kin0915-1",
+        numero: "Sección 1",
+        bloques: [
+          { dia: "Lunes", inicio: "16:00", fin: "18:45", tipo: "Laboratorio 01", profesor: "Myriam Andrea Cordero" }
+        ]
+      }
+    ]
+  },
+  {
+    id: "kin0917",
+    nombre: "Kinesiología en Persona Mayor",
+    codigo: "KIN0917",
+    secciones: [
+      {
+        id: "kin0917-1",
+        numero: "Sección 1",
+        bloques: [
+          { dia: "Jueves", inicio: "10:00", fin: "11:20", tipo: "Laboratorio 01", profesor: "Emilia Teresa Sein" },
+          { dia: "Jueves", inicio: "11:30", fin: "12:50", tipo: "Laboratorio 01", profesor: "Alejandra Andrea Arriagada / Emilia Teresa Sein" }
+        ]
+      }
+    ]
+  },
+  {
+    id: "kin0918",
+    nombre: "Presc. Ejercicio en Persona con Cáncer",
+    codigo: "KIN0918",
+    secciones: [
+      {
+        id: "kin0918-1",
+        numero: "Sección 1",
+        bloques: [
+          { dia: "Jueves",  inicio: "10:00", fin: "11:20", tipo: "Laboratorio 01", profesor: "Alejandra Andrea Arriagada" },
+          { dia: "Sábado",  inicio: "11:30", fin: "12:50", tipo: "Laboratorio 01", profesor: "Daniela Patricia García" }
+        ]
+      }
+    ]
+  },
+  {
+    id: "pri0001",
+    nombre: "Práctica Electiva Interdisciplinaria",
+    codigo: "PRI0001",
+    secciones: [
+      {
+        id: "pri0001-11",
+        numero: "Sección 11 · Rebranding y puesta al aire radial",
+        bloques: [
+          { dia: "Lunes", inicio: "20:15", fin: "21:35", tipo: "Taller", profesor: "Patricio Javier Cuevas" }
+        ]
+      },
+      {
+        id: "pri0001-12",
+        numero: "Sección 12 · Chile Íntimo: los archivos del siglo",
+        bloques: [
+          { dia: "Martes", inicio: "20:15", fin: "21:35", tipo: "Taller", profesor: "Viviana Paz Flores / Ayleen Bernadette Moath / Fanny Edith Leiva" }
+        ]
+      }
+      /* La Sección 9 (Práctica Soc-Psico Oles, prof. Luciano Benjamín Sáez) no tenía
+         día ni horario informado en la fuente, por lo que no se incluye en el simulador. */
+    ]
+  },
+  {
+    id: "campo-clinico",
+    nombre: "Campo Clínico y Simulación",
+    codigo: CODIGO_NI,
+    secciones: [
+      {
+        id: "campo-clinico-1",
+        numero: "Sección 1",
+        bloques: [
+          { dia: "Martes", inicio: "08:30", fin: "18:45", tipo: "Práctica Clínica", profesor: NO_INFORMADO }
+        ]
+      }
+    ]
+  },
+  {
+    id: "kine-deportiva",
+    nombre: "Kinesiología Deportiva",
+    codigo: CODIGO_NI,
+    secciones: [
+      {
+        id: "kine-deportiva-1",
+        numero: "Sección 1",
+        bloques: [
+          { dia: "Miércoles", inicio: "08:30", fin: "11:20", tipo: "Laboratorio", profesor: "Francisco Pavez" }
+        ]
+      }
+    ]
+  },
+  {
+    id: "kine-intensiva",
+    nombre: "Kinesiología Intensiva",
+    codigo: CODIGO_NI,
+    secciones: [
+      {
+        id: "kine-intensiva-1",
+        numero: "Sección 1",
+        bloques: [
+          { dia: "Viernes", inicio: "08:30", fin: "11:20", tipo: "Laboratorio", profesor: "Dina Contreras" }
+        ]
+      }
+    ]
+  },
+  {
+    id: "deporte-adaptado",
+    nombre: "Deporte Adaptado",
+    codigo: CODIGO_NI,
+    secciones: [
+      {
+        id: "deporte-adaptado-1",
+        numero: "Sección 1",
+        bloques: [
+          { dia: "Lunes", inicio: "13:00", fin: "15:50", tipo: "Laboratorio", profesor: "Alan Martínez" }
+        ]
+      }
+    ]
+  },
+  {
+    id: "reunion-equipo",
+    nombre: "Reunión de Equipo",
+    codigo: CODIGO_NI,
+    secciones: [
+      {
+        id: "reunion-equipo-1",
+        numero: "Sección 1",
+        bloques: [
+          { dia: "Miércoles", inicio: "11:30", fin: "12:50", tipo: "Reunión", profesor: NO_INFORMADO }
+        ]
+      }
+    ]
+  }
+];
+
+/* ================================================================
+   2. ESTADO
+   ================================================================ */
+
+const CLAVE_STORAGE = "horario_masiel_kinesiologia_v1";
+
+// Cada elemento: { ramoId, seccionId } — el resto de la info se
+// resuelve en tiempo real consultando `ramos`, y el estado de
+// conflicto se recalcula siempre con recalcularConflictos().
+let seleccion = [];
+
+// Selección pendiente de confirmación en un modal (choque o reemplazo)
+let pendiente = null;
+
+let ramoAbiertoId = null; // ramo actualmente desplegado en el panel
+
+/* ================================================================
+   3. UTILIDADES DE TIEMPO Y BÚSQUEDA
+   ================================================================ */
+
+function aMinutos(hora){
+  const [h, m] = hora.split(":").map(Number);
+  return h * 60 + m;
+}
+
+function formatearHoras(totalMin){
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  return `${h}h${m ? " " + m + "m" : ""}`;
+}
+
+function buscarRamo(ramoId){
+  return ramos.find(r => r.id === ramoId) || null;
+}
+function buscarSeccion(ramoId, seccionId){
+  const ramo = buscarRamo(ramoId);
+  if(!ramo) return null;
+  return ramo.secciones.find(s => s.id === seccionId) || null;
+}
+
+function seccionYaSeleccionada(seccionId){
+  return seleccion.some(s => s.seccionId === seccionId);
+}
+function ramoYaSeleccionado(ramoId){
+  return seleccion.find(s => s.ramoId === ramoId) || null;
+}
+
+/** Devuelve el nombre de profesor resumido de una sección (únicos, unidos por " / ") */
+function profesorSeccion(seccion){
+  const nombres = new Set();
+  seccion.bloques.forEach(b => {
+    if(b.profesor && b.profesor !== NO_INFORMADO) nombres.add(b.profesor);
+  });
+  if(nombres.size === 0) return NO_INFORMADO;
+  return Array.from(nombres).join(" / ");
+}
+
+/** ¿Se superponen dos bloques del mismo día? */
+function seSuperponen(b1, b2){
+  if(b1.dia !== b2.dia) return false;
+  const i1 = aMinutos(b1.inicio), f1 = aMinutos(b1.fin);
+  const i2 = aMinutos(b2.inicio), f2 = aMinutos(b2.fin);
+  return i1 < f2 && f1 > i2;
+}
+
+/** Compara los bloques de una sección candidata contra toda la selección actual
+ *  (opcionalmente excluyendo un ramoId, útil al reemplazar sección de un ramo) */
+function detectarChoques(seccionCandidata, excluirRamoId){
+  const choques = []; // { bloqueNuevo, ramoExistente, seccionExistente, bloqueExistente }
+  seleccion.forEach(item => {
+    if(excluirRamoId && item.ramoId === excluirRamoId) return;
+    const ramoEx = buscarRamo(item.ramoId);
+    const secEx = buscarSeccion(item.ramoId, item.seccionId);
+    if(!ramoEx || !secEx) return;
+    seccionCandidata.bloques.forEach(bNuevo => {
+      secEx.bloques.forEach(bEx => {
+        if(seSuperponen(bNuevo, bEx)){
+          choques.push({ bloqueNuevo: bNuevo, ramoExistente: ramoEx, seccionExistente: secEx, bloqueExistente: bEx });
+        }
+      });
+    });
+  });
+  return choques;
+}
+
+/** Recalcula, para TODAS las secciones seleccionadas, qué bloques están en conflicto.
+ *  Devuelve un mapa seccionId -> Set(índices de bloque en conflicto) y también
+ *  set de seccionId con al menos un conflicto. */
+function recalcularConflictos(){
+  const bloquesConflicto = {}; // seccionId -> Set(index)
+  seleccion.forEach(item => { bloquesConflicto[item.seccionId] = new Set(); });
+
+  for(let i = 0; i < seleccion.length; i++){
+    const secA = buscarSeccion(seleccion[i].ramoId, seleccion[i].seccionId);
+    if(!secA) continue;
+    for(let j = 0; j < seleccion.length; j++){
+      if(i === j) continue;
+      const secB = buscarSeccion(seleccion[j].ramoId, seleccion[j].seccionId);
+      if(!secB) continue;
+      secA.bloques.forEach((bA, idxA) => {
+        secB.bloques.forEach(bB => {
+          if(seSuperponen(bA, bB)){
+            bloquesConflicto[seleccion[i].seccionId].add(idxA);
+          }
+        });
+      });
+    }
+  }
+  return bloquesConflicto;
+}
+
+/* ================================================================
+   4. PERSISTENCIA (localStorage)
+   ================================================================ */
+
+function guardarEnStorage(){
+  try{
+    localStorage.setItem(CLAVE_STORAGE, JSON.stringify(seleccion));
+  }catch(e){
+    console.error("No se pudo guardar el horario:", e);
+  }
+}
+
+function cargarDesdeStorage(){
+  try{
+    const crudo = localStorage.getItem(CLAVE_STORAGE);
+    if(!crudo) return;
+    const datos = JSON.parse(crudo);
+    if(!Array.isArray(datos)) return;
+    // Solo restaurar entradas cuyo ramo/sección todavía existan en los datos actuales
+    seleccion = datos.filter(item => buscarSeccion(item.ramoId, item.seccionId));
+  }catch(e){
+    console.error("No se pudo leer el horario guardado:", e);
+    seleccion = [];
+  }
+}
+
+/* ================================================================
+   5. GRID DE HORARIO — CÁLCULO DE ESCALA Y DÍAS
+   ================================================================ */
+
+const DIAS_BASE = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"];
+const DIAS_EXTRA_POSIBLES = ["Sábado", "Domingo"];
+
+function diasActivos(){
+  const extra = DIAS_EXTRA_POSIBLES.filter(dia =>
+    ramos.some(r => r.secciones.some(s => s.bloques.some(b => b.dia === dia)))
+  );
+  return DIAS_BASE.concat(extra);
+}
+
+function rangoHorasGrid(){
+  let minInicio = 8 * 60;
+  let maxFin = 20 * 60;
+  ramos.forEach(r => r.secciones.forEach(s => s.bloques.forEach(b => {
+    minInicio = Math.min(minInicio, aMinutos(b.inicio));
+    maxFin = Math.max(maxFin, aMinutos(b.fin));
+  })));
+  // Redondear a la media hora más cercana hacia afuera
+  minInicio = Math.floor(minInicio / 30) * 30;
+  maxFin = Math.ceil(maxFin / 30) * 30;
+  return { minInicio, maxFin };
+}
+
+const PX_POR_MINUTO = 1.15; // escala vertical del horario
+const ALTO_CABECERA = 34;
+
+/* ================================================================
+   6. RENDER — GRID DE HORARIO
+   ================================================================ */
+
+function renderGrid(){
+  const grid = document.getElementById("horario-grid");
+  const dias = diasActivos();
+  const { minInicio, maxFin } = rangoHorasGrid();
+  const alturaTotal = (maxFin - minInicio) * PX_POR_MINUTO;
+
+  grid.style.gridTemplateColumns = `56px repeat(${dias.length}, minmax(120px, 1fr))`;
+  grid.innerHTML = "";
+
+  // --- Cabeceras ---
+  const cabeceraHora = document.createElement("div");
+  cabeceraHora.className = "celda-cabecera hora-col";
+  cabeceraHora.textContent = "";
+  grid.appendChild(cabeceraHora);
+
+  dias.forEach((dia, i) => {
+    const c = document.createElement("div");
+    c.className = "celda-cabecera";
+    c.textContent = dia;
+    if(i === dias.length - 1) c.style.borderTopRightRadius = "var(--radius-sm)";
+    grid.appendChild(c);
+  });
+
+  // --- Columna de horas ---
+  const colHoras = document.createElement("div");
+  colHoras.className = "col-horas";
+  colHoras.style.height = alturaTotal + "px";
+  for(let t = minInicio; t <= maxFin; t += 60){
+    const marca = document.createElement("div");
+    marca.className = "marca-hora";
+    marca.style.top = ((t - minInicio) * PX_POR_MINUTO) + "px";
+    const h = String(Math.floor(t/60)).padStart(2,"0");
+    const m = String(t%60).padStart(2,"0");
+    marca.textContent = `${h}:${m}`;
+    colHoras.appendChild(marca);
+  }
+  grid.appendChild(colHoras);
+
+  // --- Columnas de días ---
+  const bloquesConflicto = recalcularConflictos();
+
+  dias.forEach(dia => {
+    const col = document.createElement("div");
+    col.className = "col-dia";
+    col.style.height = alturaTotal + "px";
+    if(dia === dias[dias.length - 1]) col.style.borderBottomRightRadius = "var(--radius-sm)";
+
+    // líneas horarias de referencia cada hora
+    for(let t = minInicio; t <= maxFin; t += 60){
+      const linea = document.createElement("div");
+      linea.className = "linea-hora";
+      linea.style.top = ((t - minInicio) * PX_POR_MINUTO) + "px";
+      col.appendChild(linea);
+    }
+
+    // bloques de clases de este día
+    seleccion.forEach(item => {
+      const ramo = buscarRamo(item.ramoId);
+      const secc = buscarSeccion(item.ramoId, item.seccionId);
+      if(!ramo || !secc) return;
+      secc.bloques.forEach((b, idx) => {
+        if(b.dia !== dia) return;
+        const top = (aMinutos(b.inicio) - minInicio) * PX_POR_MINUTO;
+        const alto = Math.max((aMinutos(b.fin) - aMinutos(b.inicio)) * PX_POR_MINUTO, 26);
+        const enConflicto = bloquesConflicto[secc.id] && bloquesConflicto[secc.id].has(idx);
+
+        const div = document.createElement("div");
+        div.className = "bloque-clase entrando" + (enConflicto ? " conflicto" : "");
+        div.dataset.seccion = secc.id;
+        div.style.top = top + "px";
+        div.style.height = alto + "px";
+        div.tabIndex = 0;
+        div.setAttribute("role", "button");
+        div.setAttribute("aria-label",
+          `${ramo.nombre}, ${secc.numero}, ${b.dia} ${b.inicio} a ${b.fin}${enConflicto ? ", con choque de horario" : ""}`);
+        div.title = `${b.inicio}–${b.fin}\n${ramo.nombre}${ramo.codigo !== CODIGO_NI ? " (" + ramo.codigo + ")" : ""}\n${secc.numero}\n${profesorSeccion(secc)}\n${b.tipo}`;
+
+        const tieneCodigo = ramo.codigo && ramo.codigo !== CODIGO_NI;
+        div.innerHTML = `
+          <div class="bloque-hora">${b.inicio}–${b.fin}${tieneCodigo ? ` · <span class="bloque-codigo">${ramo.codigo}</span>` : ""}</div>
+          <div class="bloque-nombre">${ramo.nombre}</div>
+          <div class="bloque-sub">${secc.numero}</div>
+          <button class="bloque-cerrar" aria-label="Eliminar sección de ${ramo.nombre}" data-ramo="${ramo.id}">×</button>
+        `;
+
+        div.addEventListener("click", (ev) => {
+          if(ev.target.classList.contains("bloque-cerrar")) return;
+          abrirPopoverBloque(ramo, secc, enConflicto);
+        });
+        div.addEventListener("keydown", (ev) => {
+          if(ev.key === "Enter" || ev.key === " "){
+            ev.preventDefault();
+            abrirPopoverBloque(ramo, secc, enConflicto);
+          }
+        });
+        div.querySelector(".bloque-cerrar").addEventListener("click", (ev) => {
+          ev.stopPropagation();
+          eliminarSeccionDeRamo(ramo.id, true);
+        });
+
+        col.appendChild(div);
+      });
+    });
+
+    grid.appendChild(col);
+  });
+
+  actualizarPistaScroll();
+}
+
+function actualizarPistaScroll(){
+  const cont = document.querySelector(".tarjeta-horario");
+  const pista = document.querySelector(".pista-scroll");
+  if(!cont || !pista) return;
+  requestAnimationFrame(() => {
+    const desbordaHorizontal = cont.scrollWidth > cont.clientWidth + 2;
+    pista.classList.toggle("visible", desbordaHorizontal);
+  });
+}
+
+/* ================================================================
+   7. RENDER — PANEL "AGREGAR RAMO"
+   ================================================================ */
+
+function renderSelectRamos(){
+  const select = document.getElementById("select-ramo");
+  const valorActual = select.value;
+  select.innerHTML = `<option value="">Selecciona un ramo…</option>`;
+  ramos.forEach(r => {
+    const opt = document.createElement("option");
+    opt.value = r.id;
+    const yaAgregado = ramoYaSeleccionado(r.id);
+    opt.textContent = r.codigo !== CODIGO_NI ? `${r.nombre} (${r.codigo})` : r.nombre;
+    if(yaAgregado) opt.textContent += " ✓";
+    select.appendChild(opt);
+  });
+  if(valorActual) select.value = valorActual;
+}
+
+function renderListaSecciones(){
+  const cont = document.getElementById("lista-secciones");
+  cont.innerHTML = "";
+  if(!ramoAbiertoId) return;
+  const ramo = buscarRamo(ramoAbiertoId);
+  if(!ramo) return;
+
+  const seleccionActualDelRamo = ramoYaSeleccionado(ramo.id);
+
+  ramo.secciones.forEach(sec => {
+    const div = document.createElement("div");
+    div.className = "tarjeta-seccion";
+    const estaSeleccionada = seleccionActualDelRamo && seleccionActualDelRamo.seccionId === sec.id;
+
+    const bloquesHTML = sec.bloques.map(b =>
+      `<div><span><b>${b.dia}</b> ${b.inicio}–${b.fin}</span><span>${b.tipo}</span></div>`
+    ).join("");
+
+    div.innerHTML = `
+      <div class="fila-top">
+        <div>
+          <div class="sec-nombre">${sec.numero}</div>
+        </div>
+        ${estaSeleccionada ? '<span class="badge-agregada">Agregada</span>' : ''}
+      </div>
+      <div class="sec-prof">Prof.: ${profesorSeccion(sec)}</div>
+      <div class="sec-bloques">${bloquesHTML}</div>
+      <button class="btn btn-mini ${estaSeleccionada ? 'btn-secundario' : 'btn-azul'}" data-ramo="${ramo.id}" data-seccion="${sec.id}">
+        ${estaSeleccionada ? 'Sección agregada' : 'Agregar al horario'}
+      </button>
+    `;
+
+    const boton = div.querySelector("button.btn-mini");
+    if(!estaSeleccionada){
+      boton.addEventListener("click", () => intentarAgregarSeccion(ramo.id, sec.id));
+    } else {
+      boton.disabled = true;
+    }
+
+    cont.appendChild(div);
+  });
+}
+
+/* ================================================================
+   8. RENDER — RESUMEN "RAMOS SELECCIONADOS"
+   ================================================================ */
+
+function renderResumen(){
+  const cont = document.getElementById("resumen-lista");
+  cont.innerHTML = "";
+
+  if(seleccion.length === 0){
+    cont.innerHTML = `<div class="resumen-vacio">Aún no has agregado ramos a tu horario.</div>`;
+  } else {
+    const bloquesConflicto = recalcularConflictos();
+    seleccion.forEach(item => {
+      const ramo = buscarRamo(item.ramoId);
+      const secc = buscarSeccion(item.ramoId, item.seccionId);
+      if(!ramo || !secc) return;
+      const conConflicto = bloquesConflicto[secc.id] && bloquesConflicto[secc.id].size > 0;
+
+      const div = document.createElement("div");
+      div.className = "resumen-item";
+      div.innerHTML = `
+        <div class="info">
+          <div class="nom">${ramo.nombre}</div>
+          <div class="met">${secc.numero} · ${profesorSeccion(secc)}</div>
+        </div>
+        <div style="display:flex; flex-direction:column; align-items:flex-end; gap:6px;">
+          <span class="estado-chip ${conConflicto ? 'choque' : 'ok'}">${conConflicto ? 'Con choque' : 'Sin choque'}</span>
+          <button class="btn-texto btn-mini" data-ramo="${ramo.id}">Eliminar</button>
+        </div>
+      `;
+      div.querySelector("button").addEventListener("click", () => eliminarSeccionDeRamo(ramo.id, true));
+      cont.appendChild(div);
+    });
+  }
+
+  // Totales
+  let totalMinutos = 0;
+  let totalConflictos = 0;
+  const bloquesConflicto = recalcularConflictos();
+  const seccionesConConflictoContadas = new Set();
+
+  seleccion.forEach(item => {
+    const secc = buscarSeccion(item.ramoId, item.seccionId);
+    if(!secc) return;
+    secc.bloques.forEach(b => { totalMinutos += aMinutos(b.fin) - aMinutos(b.inicio); });
+    if(bloquesConflicto[secc.id] && bloquesConflicto[secc.id].size > 0){
+      seccionesConConflictoContadas.add(secc.id);
+    }
+  });
+  totalConflictos = seccionesConConflictoContadas.size;
+
+  document.getElementById("stat-ramos").textContent = seleccion.length;
+  document.getElementById("stat-horas").textContent = formatearHoras(totalMinutos);
+  document.getElementById("stat-choques").textContent = totalConflictos;
+}
+
+/* ================================================================
+   9. ACCIONES PRINCIPALES
+   ================================================================ */
+
+function renderTodo(){
+  renderSelectRamos();
+  renderListaSecciones();
+  renderGrid();
+  renderResumen();
+  guardarEnStorage();
+}
+
+function intentarAgregarSeccion(ramoId, seccionId){
+  const ramo = buscarRamo(ramoId);
+  const seccion = buscarSeccion(ramoId, seccionId);
+  if(!ramo || !seccion) return;
+
+  const yaTiene = ramoYaSeleccionado(ramoId);
+  if(yaTiene && yaTiene.seccionId !== seccionId){
+    pendiente = { tipo: "reemplazo", ramoId, seccionId };
+    abrirModalReemplazo(ramo, seccion);
+    return;
+  }
+  if(yaTiene && yaTiene.seccionId === seccionId){
+    return; // ya está agregada
+  }
+
+  const choques = detectarChoques(seccion, null);
+  if(choques.length > 0){
+    agregarSeleccion(ramoId, seccionId);
+    renderTodo();
+    flashearSeccion(seccionId);
+    pendiente = { tipo: "choque", ramoId, seccionId };
+    abrirModalChoque(ramo, seccion, choques);
+  } else {
+    agregarSeleccion(ramoId, seccionId);
+    renderTodo();
+    mostrarToast(`"${ramo.nombre}" – ${seccion.numero} agregada al horario.`);
+  }
+}
+
+function agregarSeleccion(ramoId, seccionId){
+  seleccion.push({ ramoId, seccionId });
+}
+
+function eliminarSeccionDeRamo(ramoId, avisar){
+  const item = seleccion.find(s => s.ramoId === ramoId);
+  seleccion = seleccion.filter(s => s.ramoId !== ramoId);
+  renderTodo();
+  if(avisar && item){
+    const ramo = buscarRamo(ramoId);
+    if(ramo) mostrarToast(`Se eliminó "${ramo.nombre}" del horario.`);
+  }
+}
+
+function reemplazarSeccion(ramoId, nuevaSeccionId){
+  const ramo = buscarRamo(ramoId);
+  const nuevaSeccion = buscarSeccion(ramoId, nuevaSeccionId);
+  seleccion = seleccion.filter(s => s.ramoId !== ramoId);
+
+  const choques = detectarChoques(nuevaSeccion, null);
+  agregarSeleccion(ramoId, nuevaSeccionId);
+
+  if(choques.length > 0){
+    flashearSeccion(nuevaSeccionId);
+    renderTodo();
+    abrirModalChoque(ramo, nuevaSeccion, choques);
+  } else {
+    renderTodo();
+    mostrarToast(`Sección de "${ramo.nombre}" reemplazada correctamente.`);
+  }
+}
+
+function flashearSeccion(seccionId){
+  requestAnimationFrame(() => {
+    document.querySelectorAll(`.bloque-clase[data-seccion="${seccionId}"]`).forEach(el => {
+      el.classList.add("flash");
+      el.addEventListener("animationend", () => el.classList.remove("flash"), { once: true });
+    });
+  });
+}
+
+/* ================================================================
+   10. MODALES
+   ================================================================ */
+
+function cerrarModal(){
+  const root = document.getElementById("modal-root");
+  root.innerHTML = "";
+  pendiente = null;
+}
+
+function abrirModalChoque(ramo, seccion, choques){
+  const root = document.getElementById("modal-root");
+
+  const detalleHTML = choques.slice(0, 6).map(c => `
+    <div>
+      <b>${c.bloqueNuevo.dia}:</b>
+      ${ramo.nombre} ${c.bloqueNuevo.inicio}–${c.bloqueNuevo.fin}
+      choca con
+      ${c.ramoExistente.nombre} (${c.seccionExistente.numero}) ${c.bloqueExistente.inicio}–${c.bloqueExistente.fin}
+    </div>
+  `).join("");
+
+  root.innerHTML = `
+    <div class="overlay" id="overlay-choque">
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="titulo-choque">
+        <h2 id="titulo-choque"><span class="icono-alerta">!</span> Choque de horario detectado</h2>
+        <p>La sección seleccionada de <b>${ramo.nombre}</b> (${seccion.numero}) se superpone con:</p>
+        <div class="detalle-choque">${detalleHTML}</div>
+        <div class="acciones">
+          <button class="btn btn-secundario" id="btn-quitar-ultima">Eliminar última sección</button>
+          <button class="btn btn-peligro" id="btn-mantener">Agregar de todas formas</button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.getElementById("btn-quitar-ultima").addEventListener("click", () => {
+    if(pendiente){
+      seleccion = seleccion.filter(s => s.seccionId !== pendiente.seccionId);
+      renderTodo();
+    }
+    cerrarModal();
+  });
+  document.getElementById("btn-mantener").addEventListener("click", () => {
+    renderTodo();
+    cerrarModal();
+    mostrarToast(`"${ramo.nombre}" se agregó con choque de horario.`, true);
+  });
+}
+
+function abrirModalReemplazo(ramo, seccionNueva){
+  const root = document.getElementById("modal-root");
+  root.innerHTML = `
+    <div class="overlay" id="overlay-reemplazo">
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="titulo-reemplazo">
+        <h2 id="titulo-reemplazo">Reemplazar sección</h2>
+        <p>Este ramo (<b>${ramo.nombre}</b>) ya tiene una sección seleccionada. ¿Deseas reemplazarla por <b>${seccionNueva.numero}</b>?</p>
+        <div class="acciones">
+          <button class="btn btn-secundario" id="btn-cancelar-reemplazo">Cancelar</button>
+          <button class="btn btn-azul" id="btn-confirmar-reemplazo">Reemplazar sección</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.getElementById("btn-cancelar-reemplazo").addEventListener("click", cerrarModal);
+  document.getElementById("btn-confirmar-reemplazo").addEventListener("click", () => {
+    if(pendiente){
+      reemplazarSeccion(pendiente.ramoId, pendiente.seccionId);
+    }
+    cerrarModal();
+  });
+}
+
+function abrirModalConfirmacion({titulo, mensaje, textoConfirmar, onConfirmar}){
+  const root = document.getElementById("modal-root");
+  root.innerHTML = `
+    <div class="overlay" id="overlay-confirm">
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="titulo-confirm">
+        <h2 id="titulo-confirm">${titulo}</h2>
+        <p>${mensaje}</p>
+        <div class="acciones">
+          <button class="btn btn-secundario" id="btn-cancelar-confirm">Cancelar</button>
+          <button class="btn btn-peligro" id="btn-ok-confirm">${textoConfirmar}</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.getElementById("btn-cancelar-confirm").addEventListener("click", cerrarModal);
+  document.getElementById("btn-ok-confirm").addEventListener("click", () => {
+    onConfirmar();
+    cerrarModal();
+  });
+}
+
+function abrirPopoverBloque(ramo, seccion, enConflicto){
+  const root = document.getElementById("modal-root");
+  root.innerHTML = `
+    <div class="overlay popover-bloque" id="overlay-popover">
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="titulo-popover">
+        <h2 id="titulo-popover">${ramo.nombre}</h2>
+        <div class="info-fila"><span class="k">Código</span><span class="v">${ramo.codigo}</span></div>
+        <div class="info-fila"><span class="k">Sección</span><span class="v">${seccion.numero}</span></div>
+        <div class="info-fila"><span class="k">Profesor</span><span class="v">${profesorSeccion(seccion)}</span></div>
+        <div class="info-fila"><span class="k">Estado</span><span class="v">${enConflicto ? "Con choque" : "Sin choque"}</span></div>
+        ${seccion.bloques.map(b => `<div class="info-fila"><span class="k">${b.dia}</span><span class="v">${b.inicio}–${b.fin} · ${b.tipo}</span></div>`).join("")}
+        <div class="acciones">
+          <button class="btn btn-secundario" id="btn-cerrar-popover">Cerrar</button>
+          <button class="btn btn-peligro" id="btn-eliminar-popover">Eliminar sección</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.getElementById("btn-cerrar-popover").addEventListener("click", cerrarModal);
+  document.getElementById("btn-eliminar-popover").addEventListener("click", () => {
+    eliminarSeccionDeRamo(ramo.id, true);
+    cerrarModal();
+  });
+}
+
+/* ================================================================
+   11. TOASTS
+   ================================================================ */
+
+function mostrarToast(mensaje, esAdvertencia){
+  const wrap = document.getElementById("toast-wrap");
+  const t = document.createElement("div");
+  t.className = "toast" + (esAdvertencia ? " error" : "");
+  t.textContent = mensaje;
+  wrap.appendChild(t);
+  setTimeout(() => t.remove(), 3000);
+}
+
+/* ================================================================
+   12. EVENTOS GLOBALES
+   ================================================================ */
+
+document.getElementById("select-ramo").addEventListener("change", (ev) => {
+  ramoAbiertoId = ev.target.value || null;
+  renderListaSecciones();
+});
+
+document.getElementById("btn-toggle-agregar").addEventListener("click", (ev) => {
+  const cuerpo = document.getElementById("cuerpo-agregar");
+  const expandido = ev.currentTarget.getAttribute("aria-expanded") === "true";
+  ev.currentTarget.setAttribute("aria-expanded", String(!expandido));
+  cuerpo.classList.toggle("oculto", expandido);
+});
+
+document.getElementById("btn-toggle-resumen").addEventListener("click", (ev) => {
+  const cuerpo = document.getElementById("cuerpo-resumen");
+  const expandido = ev.currentTarget.getAttribute("aria-expanded") === "true";
+  ev.currentTarget.setAttribute("aria-expanded", String(!expandido));
+  cuerpo.classList.toggle("oculto", expandido);
+});
+
+document.getElementById("btn-limpiar").addEventListener("click", () => {
+  if(seleccion.length === 0){
+    mostrarToast("El horario ya está vacío.");
+    return;
+  }
+  abrirModalConfirmacion({
+    titulo: "Limpiar horario",
+    mensaje: "¿Estás segura de que deseas limpiar el horario? Se eliminarán todos los ramos y secciones seleccionados.",
+    textoConfirmar: "Sí, limpiar horario",
+    onConfirmar: () => {
+      seleccion = [];
+      renderTodo();
+      mostrarToast("El horario se limpió correctamente.");
+    }
+  });
+});
+
+document.getElementById("btn-restablecer").addEventListener("click", () => {
+  abrirModalConfirmacion({
+    titulo: "Restablecer horario guardado",
+    mensaje: "Esto eliminará el horario visible y también el guardado automáticamente en este navegador. ¿Deseas continuar?",
+    textoConfirmar: "Sí, restablecer",
+    onConfirmar: () => {
+      seleccion = [];
+      try{ localStorage.removeItem(CLAVE_STORAGE); }catch(e){ console.error(e); }
+      renderTodo();
+      mostrarToast("Se restableció el horario guardado.");
+    }
+  });
+});
+
+// Cerrar modal al hacer click fuera de él o con tecla Escape
+document.getElementById("modal-root").addEventListener("click", (ev) => {
+  if(ev.target.classList.contains("overlay")) cerrarModal();
+});
+document.addEventListener("keydown", (ev) => {
+  if(ev.key === "Escape") cerrarModal();
+});
+
+// Redibujar el grid al cambiar tamaño (para reflejar min-width y overflow correctamente)
+let resizeTimeout;
+window.addEventListener("resize", () => {
+  clearTimeout(resizeTimeout);
+  resizeTimeout = setTimeout(renderGrid, 150);
+});
+
+/* ================================================================
+   13. DESCARGA DEL HORARIO COMO IMAGEN PNG
+   Se dibuja el horario en un <canvas> (sin librerías externas) para
+   que la exportación funcione completamente sin conexión a internet.
+   Cada recuadro incluye el código del ramo, dato clave a la hora de
+   tomar ramos.
+   ================================================================ */
+
+function ajustarTextoCanvas(ctx, texto, maxAncho){
+  if(ctx.measureText(texto).width <= maxAncho) return texto;
+  let recortado = texto;
+  while(recortado.length > 1 && ctx.measureText(recortado + "…").width > maxAncho){
+    recortado = recortado.slice(0, -1);
+  }
+  return recortado + "…";
+}
+
+function dibujarRectRedondeado(ctx, x, y, w, h, r){
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+function generarCanvasHorario(){
+  if(seleccion.length === 0) return null;
+
+  const dias = diasActivos();
+  const { minInicio, maxFin } = rangoHorasGrid();
+  const bloquesConflicto = recalcularConflictos();
+
+  // --- Medidas base (en px "lógicos", luego se escalan por nitidez) ---
+  const ESCALA_MIN = 1.35;      // px por minuto dentro del grid
+  const ANCHO_HORA = 64;
+  const ANCHO_DIA = 210;
+  const MARGEN = 26;
+  const ALTO_TITULO = 56;
+  const ALTO_LEYENDA = 30;
+  const ALTO_CABECERA_DIAS = 38;
+
+  const altoGrid = (maxFin - minInicio) * ESCALA_MIN;
+  const anchoTotal = MARGEN * 2 + ANCHO_HORA + dias.length * ANCHO_DIA;
+  const altoTotal = MARGEN * 2 + ALTO_TITULO + ALTO_LEYENDA + ALTO_CABECERA_DIAS + altoGrid + 24;
+
+  const dpr = Math.max(window.devicePixelRatio || 1, 2); // nitidez mínima x2
+  const canvas = document.createElement("canvas");
+  canvas.width = anchoTotal * dpr;
+  canvas.height = altoTotal * dpr;
+  const ctx = canvas.getContext("2d");
+  ctx.scale(dpr, dpr);
+
+  const colorTexto = "#22262b";
+  const colorMuted = "#6b7280";
+  const colorBorde = "#e3e5e9";
+  const colorVerdeBg = "#e6f7ee";
+  const colorVerdeBorde = "#189352";
+  const colorVerdeTexto = "#0d3d24";
+  const colorRojoBg = "#fdeceb";
+  const colorRojoBorde = "#c53831";
+  const colorRojoTexto = "#5c130f";
+
+  // --- Fondo ---
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, anchoTotal, altoTotal);
+
+  // --- Título ---
+  ctx.fillStyle = colorTexto;
+  ctx.font = "700 19px -apple-system, Segoe UI, Roboto, Arial, sans-serif";
+  ctx.textBaseline = "alphabetic";
+  ctx.fillText("Simulador de Horario – Masiel · Kinesiología", MARGEN, MARGEN + 22);
+
+  ctx.fillStyle = colorMuted;
+  ctx.font = "400 12px -apple-system, Segoe UI, Roboto, Arial, sans-serif";
+  const fecha = new Date().toLocaleDateString("es-CL", { year: "numeric", month: "long", day: "numeric" });
+  ctx.fillText(`Generado el ${fecha}`, MARGEN, MARGEN + 40);
+
+  // --- Leyenda ---
+  const yLeyenda = MARGEN + ALTO_TITULO;
+  ctx.beginPath();
+  ctx.fillStyle = colorVerdeBorde;
+  ctx.arc(MARGEN + 6, yLeyenda + 10, 5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = colorTexto;
+  ctx.font = "400 12px -apple-system, Segoe UI, Roboto, Arial, sans-serif";
+  ctx.fillText("Sin choque", MARGEN + 18, yLeyenda + 14);
+
+  ctx.beginPath();
+  ctx.fillStyle = colorRojoBorde;
+  ctx.arc(MARGEN + 108, yLeyenda + 10, 5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = colorTexto;
+  ctx.fillText("Con choque", MARGEN + 120, yLeyenda + 14);
+
+  // --- Cabecera de días ---
+  const xGrid = MARGEN + ANCHO_HORA;
+  const yCabeceraDias = MARGEN + ALTO_TITULO + ALTO_LEYENDA;
+  const yGrid = yCabeceraDias + ALTO_CABECERA_DIAS;
+
+  ctx.fillStyle = "#fdf4f8";
+  ctx.fillRect(MARGEN, yCabeceraDias, ANCHO_HORA + dias.length * ANCHO_DIA, ALTO_CABECERA_DIAS);
+  ctx.strokeStyle = colorBorde;
+  ctx.lineWidth = 1;
+  ctx.strokeRect(MARGEN + 0.5, yCabeceraDias + 0.5, ANCHO_HORA + dias.length * ANCHO_DIA - 1, ALTO_CABECERA_DIAS - 1);
+
+  ctx.fillStyle = colorTexto;
+  ctx.font = "700 13px -apple-system, Segoe UI, Roboto, Arial, sans-serif";
+  ctx.textAlign = "center";
+  dias.forEach((dia, i) => {
+    const cx = xGrid + i * ANCHO_DIA + ANCHO_DIA / 2;
+    ctx.fillText(dia, cx, yCabeceraDias + ALTO_CABECERA_DIAS / 2 + 4);
+  });
+  ctx.textAlign = "left";
+
+  // --- Marco general del grid ---
+  ctx.strokeStyle = colorBorde;
+  ctx.strokeRect(MARGEN + 0.5, yGrid + 0.5, ANCHO_HORA + dias.length * ANCHO_DIA - 1, altoGrid - 1);
+
+  // --- Horas y líneas ---
+  ctx.font = "400 11px -apple-system, Segoe UI, Roboto, Arial, sans-serif";
+  for(let t = minInicio; t <= maxFin; t += 60){
+    const y = yGrid + (t - minInicio) * ESCALA_MIN;
+    ctx.strokeStyle = "#f1dce8";
+    ctx.beginPath();
+    ctx.moveTo(xGrid, y);
+    ctx.lineTo(xGrid + dias.length * ANCHO_DIA, y);
+    ctx.stroke();
+
+    ctx.fillStyle = colorMuted;
+    ctx.textAlign = "right";
+    const h = String(Math.floor(t / 60)).padStart(2, "0");
+    const m = String(t % 60).padStart(2, "0");
+    ctx.fillText(`${h}:${m}`, xGrid - 8, y + 4);
+    ctx.textAlign = "left";
+  }
+
+  // --- Separadores verticales entre días ---
+  ctx.strokeStyle = colorBorde;
+  for(let i = 0; i <= dias.length; i++){
+    const x = xGrid + i * ANCHO_DIA;
+    ctx.beginPath();
+    ctx.moveTo(x, yGrid);
+    ctx.lineTo(x, yGrid + altoGrid);
+    ctx.stroke();
+  }
+
+  // --- Bloques de clases ---
+  seleccion.forEach(item => {
+    const ramo = buscarRamo(item.ramoId);
+    const secc = buscarSeccion(item.ramoId, item.seccionId);
+    if(!ramo || !secc) return;
+    const tieneCodigo = ramo.codigo && ramo.codigo !== CODIGO_NI;
+
+    secc.bloques.forEach((b, idx) => {
+      const diaIndex = dias.indexOf(b.dia);
+      if(diaIndex === -1) return;
+      const enConflicto = bloquesConflicto[secc.id] && bloquesConflicto[secc.id].has(idx);
+
+      const bx = xGrid + diaIndex * ANCHO_DIA + 4;
+      const by = yGrid + (aMinutos(b.inicio) - minInicio) * ESCALA_MIN + 3;
+      const bw = ANCHO_DIA - 8;
+      const bh = Math.max((aMinutos(b.fin) - aMinutos(b.inicio)) * ESCALA_MIN - 6, 34);
+
+      const fondo = enConflicto ? colorRojoBg : colorVerdeBg;
+      const borde = enConflicto ? colorRojoBorde : colorVerdeBorde;
+      const textoColor = enConflicto ? colorRojoTexto : colorVerdeTexto;
+
+      dibujarRectRedondeado(ctx, bx, by, bw, bh, 7);
+      ctx.fillStyle = fondo;
+      ctx.fill();
+      ctx.strokeStyle = borde;
+      ctx.lineWidth = 1.2;
+      ctx.stroke();
+
+      const padX = 8;
+      let cursorY = by + 15;
+      const maxAncho = bw - padX * 2;
+
+      // Hora
+      ctx.fillStyle = textoColor;
+      ctx.font = "700 11px -apple-system, Segoe UI, Roboto, Arial, sans-serif";
+      ctx.fillText(`${b.inicio}–${b.fin}`, bx + padX, cursorY);
+      cursorY += 15;
+
+      // Código del ramo (dato clave solicitado)
+      if(tieneCodigo && cursorY <= by + bh - 6){
+        ctx.font = "800 12px -apple-system, Segoe UI, Roboto, Arial, sans-serif";
+        ctx.fillText(ajustarTextoCanvas(ctx, ramo.codigo, maxAncho), bx + padX, cursorY);
+        cursorY += 15;
+      }
+
+      // Nombre del ramo
+      if(cursorY <= by + bh - 6){
+        ctx.font = "600 11px -apple-system, Segoe UI, Roboto, Arial, sans-serif";
+        ctx.fillText(ajustarTextoCanvas(ctx, ramo.nombre, maxAncho), bx + padX, cursorY);
+        cursorY += 14;
+      }
+
+      // Sección
+      if(cursorY <= by + bh - 4){
+        ctx.font = "400 10.5px -apple-system, Segoe UI, Roboto, Arial, sans-serif";
+        ctx.globalAlpha = 0.9;
+        ctx.fillText(ajustarTextoCanvas(ctx, secc.numero, maxAncho), bx + padX, cursorY);
+        ctx.globalAlpha = 1;
+      }
+    });
+  });
+
+  return canvas;
+}
+
+function descargarHorarioPNG(){
+  if(seleccion.length === 0){
+    mostrarToast("Agrega al menos un ramo antes de descargar el horario.", true);
+    return;
+  }
+  const canvas = generarCanvasHorario();
+  if(!canvas) return;
+
+  canvas.toBlob((blob) => {
+    if(!blob){
+      mostrarToast("No se pudo generar la imagen. Intenta nuevamente.", true);
+      return;
+    }
+    const url = URL.createObjectURL(blob);
+    const enlace = document.createElement("a");
+    const fechaArchivo = new Date().toISOString().slice(0, 10);
+    enlace.href = url;
+    enlace.download = `horario-masiel-${fechaArchivo}.png`;
+    document.body.appendChild(enlace);
+    enlace.click();
+    enlace.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+    mostrarToast("Horario descargado como imagen PNG.");
+  }, "image/png");
+}
+
+document.getElementById("btn-descargar").addEventListener("click", descargarHorarioPNG);
+
+/* ================================================================
+   14. INICIALIZACIÓN
+   ================================================================ */
+
+function ajustarPanelesParaMovil(){
+  const esMovil = window.matchMedia("(max-width: 640px)").matches;
+  if(!esMovil) return;
+  const btnResumen = document.getElementById("btn-toggle-resumen");
+  const cuerpoResumen = document.getElementById("cuerpo-resumen");
+  btnResumen.setAttribute("aria-expanded", "false");
+  cuerpoResumen.classList.add("oculto");
+}
+
+function init(){
+  cargarDesdeStorage();
+  renderTodo();
+  ajustarPanelesParaMovil();
+}
+init();
+</script>
+</body>
+</html>
